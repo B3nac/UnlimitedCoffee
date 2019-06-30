@@ -109,6 +109,7 @@ public class MainActivity extends AppCompatActivity {
         phoneNumText = (TextView) findViewById(R.id.phoneNumberText);
         sentPhoneNumber = phoneNumText.getText().toString();
         String encryptedText = TextEncryption.encrypt(textMessage);
+        // sending the text
         smsManager.sendTextMessage(sentPhoneNumber, null, encryptedText, null, null);
         String decryptedText = TextEncryption.decrypt(encryptedText);
         System.out.println(decryptedText);
