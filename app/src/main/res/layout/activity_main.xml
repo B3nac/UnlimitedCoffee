@@ -18,7 +18,8 @@
         android:layout_alignParentBottom="true"
         android:background="#d0d3ee"
         android:gravity="top"
-        android:hint="Enter message here..." />
+        android:hint="Enter message here..."
+        android:inputType="" />
 
     <Button
         android:layout_width="wrap_content"
@@ -33,15 +34,36 @@
         android:onClick="onSendClick" />
 
     <ListView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
         android:id="@+id/messages"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
+        android:layout_width="381dp"
+        android:layout_height="498dp"
         android:layout_above="@+id/input"
-        android:layout_alignRight="@+id/send"
+        android:layout_below="@+id/phoneNumberText"
         android:layout_alignEnd="@+id/send"
+        android:layout_alignRight="@+id/send"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentLeft="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginLeft="0dp"
+        android:layout_marginTop="13dp"
+        android:layout_marginEnd="-1dp"
+        android:layout_marginRight="-1dp"
+        android:layout_marginBottom="14dp"
         android:background="#cdeede" />
+
+    <EditText
+        android:id="@+id/phoneNumberText"
+        android:layout_width="395dp"
+        android:layout_height="71dp"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="14dp"
+        android:layout_marginEnd="0dp"
+        android:ems="10"
+        android:hint="Enter Phone Number here"
+        android:inputType="text"
+        android:textSize="24sp" />
 
 </RelativeLayout>

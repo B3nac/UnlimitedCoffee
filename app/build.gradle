@@ -2,7 +2,6 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 24
-    buildToolsVersion "24.0.2"
 
     defaultConfig {
         applicationId "com.nqr.smsapp"
@@ -21,9 +20,11 @@ android {
 
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
-    compile 'com.android.support.constraint:constraint-layout:1.1.3'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.3'
     testCompile 'junit:junit:4.12'
-    compile 'com.android.support:appcompat-v7:24.2.1'
-    compile 'com.googlecode.libphonenumber:libphonenumber:8.9.9'
+    implementation 'com.android.support:appcompat-v7:24.2.1'
+    implementation 'com.googlecode.libphonenumber:libphonenumber:8.9.9'
     implementation files('libs/jbcrypt-1.0.0.jar')
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+    implementation 'com.android.support:design:24.2.1'
 }

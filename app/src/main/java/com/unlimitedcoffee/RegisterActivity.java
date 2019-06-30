@@ -65,8 +65,9 @@ public class RegisterActivity extends AppCompatActivity {
                             // hash user password
                             String pwordHash = Utilities.hashPword(password);
                             db.addUser(phoneNumber, pwordHash);
-                            Intent smsApp = new Intent(RegisterActivity.this, MainActivity.class);
-                            startActivity(smsApp);
+                            ///send the user to the message history page
+                            Intent messageHistApp = new Intent(RegisterActivity.this, MessageHistoryActivity.class);
+                            startActivity(messageHistApp);
                         } else {
                             Toast.makeText(RegisterActivity.this, "Passwords don't match or doesn't meet requirements!", Toast.LENGTH_SHORT).show();
                         }

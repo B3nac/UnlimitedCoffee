@@ -17,20 +17,21 @@ import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
-
+    TextView phoneNumText;
     SessionPreferences session;
     ArrayList<String> smsMessagesList = new ArrayList<>();
     ListView messages;
     ArrayAdapter arrayAdapter;
     EditText input;
     SmsManager smsManager = SmsManager.getDefault();
-    private String sentPhoneNumber = "+15555215554";
+    private String sentPhoneNumber = "";
 
     private static MainActivity inst;
 
@@ -104,11 +105,14 @@ public class MainActivity extends AppCompatActivity {
             != PackageManager.PERMISSION_GRANTED) {
         getPermissionToReadSMS();
     } else {
+        phoneNumText = (TextView) findViewById(R.id.phoneNumberText);
+        sentPhoneNumber = phoneNumText.getText().toString();
         String encryptedText = TextEncryption.encrypt(textMessage);
         smsManager.sendTextMessage(sentPhoneNumber, null, encryptedText, null, null);
         String decryptedText = TextEncryption.decrypt(encryptedText);
         System.out.println(decryptedText);
         Toast.makeText(this, "Message sent!", Toast.LENGTH_SHORT).show();
+        input.setText("");
     }
 }
 
