@@ -14,9 +14,7 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity
-            android:launchMode="singleTask"
-            android:name=".LoginActivity">
+        <activity android:launchMode="singleTask" android:name=".LoginActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -30,7 +28,7 @@
             </intent-filter>
         </receiver>
         <activity android:name=".MainActivity" />
-        <activity android:name=".MessageHistoryActivity"/>
+        <activity android:name=".MessageHistoryActivity" />
         <activity android:name=".RegisterActivity" />
         <activity android:name=".AccountSettingsActivity" />
         <activity android:name=".ContactsSearchActivity"

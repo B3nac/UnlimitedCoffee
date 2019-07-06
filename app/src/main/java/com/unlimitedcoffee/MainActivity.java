@@ -37,7 +37,6 @@ public class MainActivity extends AppCompatActivity {
 
     private static MainActivity inst;
 
-    private static final int READ_SMS_PERMISSIONS_REQUEST = 1;
     private static final int SEND_SMS_PERMISSIONS_REQUEST = 1;
 
     public static MainActivity instance() {
@@ -66,14 +65,13 @@ public class MainActivity extends AppCompatActivity {
         text_Phone_Number = (EditText) findViewById(R.id.txt_phone_number);
         arrayAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, smsMessagesList);
         messages.setAdapter(arrayAdapter);
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS)
-                != PackageManager.PERMISSION_GRANTED) {
-            getPermissionToReadSMS();
 
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS)
+                != PackageManager.PERMISSION_GRANTED) {
+            getPermissionToSendSMS();
         } else {
             refreshSmsInbox();
         }
-
 
     }
     /*
@@ -120,7 +118,7 @@ public class MainActivity extends AppCompatActivity {
             requestPermissions(new String[]{Manifest.permission.SEND_SMS}, SEND_SMS_PERMISSIONS_REQUEST);
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS)
                     != PackageManager.PERMISSION_GRANTED) {
-                getPermissionToReadSMS();
+                getPermissionToSendSMS();
             } else {
                 String encryptedText = TextEncryption.encrypt(textMessage);
                 smsManager.sendTextMessage(sentPhoneNumber, null, encryptedText, null, null);
@@ -133,13 +131,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.M)
-    public void getPermissionToReadSMS() {
+    public void getPermissionToSendSMS() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) {
             if (shouldShowRequestPermissionRationale(
                     Manifest.permission.READ_SMS)) {
                 Toast.makeText(this, "Please allow permission!", Toast.LENGTH_SHORT).show();
             }
-            requestPermissions(new String[]{Manifest.permission.READ_SMS}, READ_SMS_PERMISSIONS_REQUEST);
+            requestPermissions(new String[]{Manifest.permission.READ_SMS}, SEND_SMS_PERMISSIONS_REQUEST);
         }
     }
 
@@ -149,13 +147,13 @@ public class MainActivity extends AppCompatActivity {
                                            @NonNull String permissions[],
                                            @NonNull int[] grantResults) {
         // Make sure it's our original READ_CONTACTS request
-        if (requestCode == READ_SMS_PERMISSIONS_REQUEST) {
+        if (requestCode == SEND_SMS_PERMISSIONS_REQUEST) {
             if (grantResults.length == 1 &&
                     grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "Read SMS permission granted", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Send SMS permission granted", Toast.LENGTH_SHORT).show();
                 refreshSmsInbox();
             } else {
-                Toast.makeText(this, "Read SMS permission denied", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Send SMS permission denied", Toast.LENGTH_SHORT).show();
             }
 
         } else {
@@ -178,7 +176,5 @@ public class MainActivity extends AppCompatActivity {
         } while (smsInboxCursor.moveToNext());
         //messages.setSelection(arrayAdapter.getCount() - 1);
     }
-
-
 
 }
