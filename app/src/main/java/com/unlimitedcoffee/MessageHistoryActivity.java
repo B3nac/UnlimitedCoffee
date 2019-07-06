@@ -1,7 +1,9 @@
 package com.unlimitedcoffee;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ContentResolver;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.media.AudioFocusRequest;
@@ -29,6 +31,7 @@ public class MessageHistoryActivity extends AppCompatActivity {
     MessageHistAdapter msgAdapter;
     ArrayList<String> phoneNumber = new ArrayList<>();
     ArrayList<String> messages = new ArrayList<>();
+    ArrayList <Conversation> conversations = new ArrayList<Conversation>();
 
     /**
      * One create method for the message History activity
@@ -46,7 +49,8 @@ public class MessageHistoryActivity extends AppCompatActivity {
 
         smsListView = (ListView) findViewById(R.id.lvMsg);
         registerForContextMenu(smsListView);
-        refreshSMSInbox();
+
+        conversations = generateConversationHistory();
         msgAdapter = new MessageHistAdapter (this, phoneNumber , messages);
         smsListView.setAdapter(msgAdapter);
 
@@ -60,20 +64,24 @@ public class MessageHistoryActivity extends AppCompatActivity {
             startActivity(toNewMessage);
         }
         }); // end newMsgBtn onClick
+
         smsListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Log.i("HelloListView", "You clicked Item: " + id + " at position:" + position);
                 Intent toMessageThread = new Intent(MessageHistoryActivity.this, MainActivity.class);
-                //intent.putExtra("position", position);
-                // Or / And
-                //intent.putExtra("id", id);
                 startActivity(toMessageThread);
             }
         });
 
     } // end onCreate
 
+    /**
+     * The following creates a context menu after long press
+     * @param menu
+     * @param v
+     * @param menuInfo
+     */
     @Override
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, v, menuInfo);
@@ -81,7 +89,16 @@ public class MessageHistoryActivity extends AppCompatActivity {
             MenuInflater inflater = getMenuInflater();
             inflater.inflate(R.menu.context_menu_hist, menu);
         }
+
+
+
     }
+
+    /**
+     * The following method creates the context menu options during long press
+     * @param item
+     * @returns a boolean confirmation
+     */
 
     @Override
     public boolean onContextItemSelected(MenuItem item) {
@@ -93,6 +110,30 @@ public class MessageHistoryActivity extends AppCompatActivity {
                 return true;
             case R.id.Delete_menu:
                 // remove stuff here
+                AdapterView.AdapterContextMenuInfo info =
+                        (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
+                Toast.makeText(this, "Selected Item: " +
+                        info.id, Toast.LENGTH_SHORT).show();
+                final int index = (int) info.id;
+                AlertDialog.Builder alert = new AlertDialog.Builder(MessageHistoryActivity.this);
+                alert.setMessage(" Are you sure you want to delete this message from this App?");
+                alert.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        conversations.remove(index);
+                        onResume();
+                    }
+                });
+                alert.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                });
+                alert.create();
+                alert.show();
+
+                onResume();
                 return true;
             default:
                 return super.onContextItemSelected(item);
@@ -101,7 +142,7 @@ public class MessageHistoryActivity extends AppCompatActivity {
 
 
     /**
-     * The following two methods create the menu of options in MainActivity
+     * The following two methods create the menu of options in MessageHistoryActivity
      * @param menu
      * @return true (boolean)
      */
@@ -129,6 +170,9 @@ public class MessageHistoryActivity extends AppCompatActivity {
                 Intent toNewGrpMessage = new Intent(MessageHistoryActivity.this, MainActivity.class);
                 startActivity(toNewGrpMessage);
                 return true;
+            case R.id.DeleteAll_settings:    // new Group Message
+                deleteAllMessages();
+                return true;
             case R.id.logout:   // logout
                 session.logoutUser();
                 return true;
@@ -153,17 +197,15 @@ public class MessageHistoryActivity extends AppCompatActivity {
         smsListView.setAdapter(msgAdapter);
     }
 
-
     /**
-     * This method refreshes the content of the inbox
-     *
+     * This method generates the conversation history of messages on the phone
+     * @return ArrayList of Conversation objects
      */
-    private void refreshSMSInbox() {
-        phoneNumber.clear();
-        messages.clear();
+
+    private ArrayList <Conversation> generateConversationHistory(){
         ArrayList <String> StoredPhoneNumbers = new ArrayList<String>();
         ArrayList <Message> StoredMessages = new ArrayList<Message>();
-        ArrayList <Conversation> conversations = new ArrayList<Conversation>();
+
         //pooling text messages from the sms manager
         Uri inboxURI = Uri.parse("content://sms");
         String[] requestedColumns = new String[]{"_id", "address", "body"};
@@ -175,7 +217,7 @@ public class MessageHistoryActivity extends AppCompatActivity {
         smsInboxCursor.moveToFirst(); // last text sent
 
         // The next few lines are to group messages per phone number
-        if (indexBody < 0 ||  !smsInboxCursor.moveToNext()) return;
+        if (indexBody < 0 ||  !smsInboxCursor.moveToNext()) return null;
         smsInboxCursor.moveToFirst();
         do {
 
@@ -187,20 +229,53 @@ public class MessageHistoryActivity extends AppCompatActivity {
 
         } while(smsInboxCursor.moveToNext());
 
-        for (String sNumber: StoredPhoneNumbers){   // group messages per phone number
-            ArrayList <String> numMessages = new ArrayList<String>();
-            for (Message m: StoredMessages){
-                if (m.getNumber().equals(sNumber)){
+        for (String sNumber: StoredPhoneNumbers) {   // group messages per phone number]
+
+            ArrayList<String> numMessages = new ArrayList<String>();
+            for (Message m : StoredMessages) {
+                if (m.getNumber().equals(sNumber)) {
                     numMessages.add(m.getBody());
                 }
             }
-            conversations.add(new Conversation(sNumber, numMessages));
+            conversations.add(new Conversation(sNumber, numMessages)); // add new conversation
         }
+        return conversations;
+    }
 
-        for (Conversation c: conversations) {   // this returns the last phone
+    /**
+     * This method refreshes the content of the inbox
+     *
+     */
+    private void refreshSMSInbox() {
+        phoneNumber.clear();
+        messages.clear();
+
+
+        for (Conversation c: conversations) {   // this returns the last phone number and conversation
             phoneNumber.add(c.getNumber());
             messages.add(c.findLastMessage());
         }
     }
+
+    private void deleteAllMessages(){
+        AlertDialog.Builder alert = new AlertDialog.Builder(MessageHistoryActivity.this);
+        alert.setMessage(" Are you sure you want to delete all message from this App?");
+        alert.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                conversations.clear();
+                onResume();
+            }
+        });
+        alert.setNegativeButton("No", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+        alert.create();
+        alert.show();
+    }
+
 }   // end class
 

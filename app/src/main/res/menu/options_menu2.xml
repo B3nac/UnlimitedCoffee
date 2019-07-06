@@ -4,6 +4,8 @@
         android:title="Create New Message" />
     <item android:id="@+id/newGrpMsgBtn_settings"
         android:title="Create New Group Message" />
+    <item android:id="@+id/DeleteAll_settings"
+        android:title="Delete All" />
     <item android:id="@+id/app_settings"
         android:title="App Settings" />
     <item android:id="@+id/logout"

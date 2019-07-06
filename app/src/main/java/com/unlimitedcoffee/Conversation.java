@@ -15,11 +15,17 @@ public class Conversation {
         return number;
     }
 
-    public void addMessage(String msg){
-
-        messages.add(msg);
+    public void setNumber(String number) {
+        this.number = number;
     }
+
+    public ArrayList<String> getMessages() {
+        return messages;
+    }
+
     public String findLastMessage(){
         return this.messages.get(0);
     }
+
+
 }
