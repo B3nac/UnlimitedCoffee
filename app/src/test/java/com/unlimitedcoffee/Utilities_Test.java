@@ -1,6 +1,10 @@
 package com.unlimitedcoffee;
 
 import org.junit.Test;
+
+import java.util.Calendar;
+import java.util.Date;
+
 import static org.junit.Assert.assertEquals;
 
 
@@ -44,5 +48,12 @@ public class Utilities_Test {
         assertEquals(expResult, result);
     }
 
-
+    @Test
+    public void testGetTimeStr() {
+        System.out.println("UtilitiesJUnit4Test: getTimeStr()");
+        Date currentTime = Calendar.getInstance().getTime();
+        String returnTime = Utilities.getTimeStr();
+        String expectedTime = currentTime.toString();
+        assertEquals(expectedTime, returnTime);
+    }
 }

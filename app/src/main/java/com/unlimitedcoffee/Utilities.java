@@ -5,6 +5,8 @@ package com.unlimitedcoffee;
  */
 
 import org.mindrot.jbcrypt.BCrypt;
+import java.util.Calendar;
+import java.util.Date;
 
  class Utilities {
     private static char[] hex={'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
@@ -183,7 +185,8 @@ import org.mindrot.jbcrypt.BCrypt;
                     int a2=c%16;
                     c=(char) (c/16);
                     int a1=c%16;
-                    out.append("&#x"+hex[a1]+hex[a2]+hex[a3]+hex[a4]+";");
+                    String str = ("&#x"+hex[a1]+hex[a2]+hex[a3]+hex[a4]+";");
+                    out.append(str);
                 }
                 else
                 {
@@ -193,5 +196,9 @@ import org.mindrot.jbcrypt.BCrypt;
         }
         return out.toString();
     }
+     static String getTimeStr()  {
+         Date currentTime = Calendar.getInstance().getTime();
+         return currentTime.toString();
+     }
 
 }
