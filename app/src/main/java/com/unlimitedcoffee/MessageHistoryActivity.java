@@ -90,8 +90,6 @@ public class MessageHistoryActivity extends AppCompatActivity {
             inflater.inflate(R.menu.context_menu_hist, menu);
         }
 
-
-
     }
 
     /**
@@ -109,31 +107,10 @@ public class MessageHistoryActivity extends AppCompatActivity {
                 startActivity(toNewMessage);
                 return true;
             case R.id.Delete_menu:
-                // remove stuff here
                 AdapterView.AdapterContextMenuInfo info =
-                        (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();
-                Toast.makeText(this, "Selected Item: " +
-                        info.id, Toast.LENGTH_SHORT).show();
+                        (AdapterView.AdapterContextMenuInfo) item.getMenuInfo();    // get ID from adapter
                 final int index = (int) info.id;
-                AlertDialog.Builder alert = new AlertDialog.Builder(MessageHistoryActivity.this);
-                alert.setMessage(" Are you sure you want to delete this message from this App?");
-                alert.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        conversations.remove(index);
-                        onResume();
-                    }
-                });
-                alert.setNegativeButton("No", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        dialog.dismiss();
-                    }
-                });
-                alert.create();
-                alert.show();
-
-                onResume();
+                deleteMessageThread(index); // delete thread with provided id
                 return true;
             default:
                 return super.onContextItemSelected(item);
@@ -257,6 +234,10 @@ public class MessageHistoryActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * This method deletes all message threads in the conversation history
+     */
+
     private void deleteAllMessages(){
         AlertDialog.Builder alert = new AlertDialog.Builder(MessageHistoryActivity.this);
         alert.setMessage(" Are you sure you want to delete all message from this App?");
@@ -277,5 +258,28 @@ public class MessageHistoryActivity extends AppCompatActivity {
         alert.show();
     }
 
+    /**
+     * This message removes the conversation record at the index provided
+     * @param threadID
+     */
+    private void deleteMessageThread(final int threadID){
+        AlertDialog.Builder alert = new AlertDialog.Builder(MessageHistoryActivity.this);
+        alert.setMessage(" Are you sure you want to delete this message from this App?");
+        alert.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                conversations.remove(threadID);
+                onResume();
+            }
+        });
+        alert.setNegativeButton("No", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+        alert.create();
+        alert.show();
+    }
 }   // end class
 
