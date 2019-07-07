@@ -6,7 +6,8 @@
     android:layout_height="match_parent"
     tools:context="com.unlimitedcoffee.AccountSettingsActivity"
     android:orientation="vertical"
-    android:gravity="center_horizontal">
+    android:gravity="center_horizontal"
+    android:background="@drawable/bean_background">
 
     <TextView
         android:id="@+id/logged_in_as"
