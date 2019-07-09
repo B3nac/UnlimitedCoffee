@@ -33,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
     EditText input;
     EditText text_Phone_Number;
     SmsManager smsManager = SmsManager.getDefault();
-
+    PNDatabaseHelper PNdatabase;    // phone number data base helper
 
     private static MainActivity inst;
 
@@ -65,7 +65,7 @@ public class MainActivity extends AppCompatActivity {
         text_Phone_Number = (EditText) findViewById(R.id.txt_phone_number);
         arrayAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, smsMessagesList);
         messages.setAdapter(arrayAdapter);
-
+        PNdatabase = new PNDatabaseHelper(this);
 
         if (getIntent().hasExtra("com.unlimitedcoffee.SELECTED_NUMBER")) {
             String incomingNumber = getIntent().getStringExtra("com.unlimitedcoffee.SELECTED_NUMBER");
@@ -134,6 +134,9 @@ public class MainActivity extends AppCompatActivity {
                 smsManager.sendTextMessage(sentPhoneNumber, null, encryptedText, null, null);
                 String decryptedText = TextEncryption.decrypt(encryptedText);
                 System.out.println(decryptedText);
+                if (!PNdatabase.containsPhoneNumber(sentPhoneNumber.replace("+", ""))) {
+                    PNdatabase.addPhoneNumber(sentPhoneNumber.replace("+", "")); // add phone number to the database
+                }
                 Toast.makeText(this, "Message sent!", Toast.LENGTH_SHORT).show();
                 input.setText("");
             }

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
     <item android:id="@+id/newMsgBtn_settings"
         android:title="Create New Message" />
     <item android:id="@+id/newGrpMsgBtn_settings"
@@ -10,5 +12,9 @@
         android:title="App Settings" />
     <item android:id="@+id/logout"
         android:title="Logout" />
-
+    <item
+        android:id="@+id/refreshBtn"
+        android:icon="@drawable/icons8_refresh_52"
+        android:title=""
+        app:showAsAction="always" />
 </menu>

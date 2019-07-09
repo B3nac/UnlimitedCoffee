@@ -17,6 +17,8 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -32,7 +34,8 @@ public class MessageHistoryActivity extends AppCompatActivity {
     ArrayList<String> phoneNumber = new ArrayList<>();
     ArrayList<String> messages = new ArrayList<>();
     ArrayList <Conversation> conversations = new ArrayList<Conversation>();
-
+    PNDatabaseHelper PNdatabase;
+    WebView mWebView;
     /**
      * One create method for the message History activity
      * @param savedInstanceState
@@ -46,14 +49,25 @@ public class MessageHistoryActivity extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_message_history);
+        mWebView = new WebView(this);
+        mWebView.getSettings().setJavaScriptEnabled(true);
+        mWebView.setWebViewClient(new WebViewClient(){
+
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                Toast.makeText(MessageHistoryActivity.this , "refresh clicked " , Toast.LENGTH_SHORT).show();
+            }
+
+        });
+
 
         smsListView = (ListView) findViewById(R.id.lvMsg);
         registerForContextMenu(smsListView);
 
-        conversations = generateConversationHistory();
         msgAdapter = new MessageHistAdapter (this, phoneNumber , messages);
         smsListView.setAdapter(msgAdapter);
 
+        PNdatabase = new PNDatabaseHelper(this);
+        checkDatabase();
         // assign new message button
         newMsgBtn = (FloatingActionButton) findViewById(R.id.newMsgBtn);
         //send user to new message entry page
@@ -123,6 +137,7 @@ public class MessageHistoryActivity extends AppCompatActivity {
     }
 
 
+
     /**
      * The following two methods create the menu of options in MessageHistoryActivity
      * @param menu
@@ -152,6 +167,9 @@ public class MessageHistoryActivity extends AppCompatActivity {
                 Intent toNewGrpMessage = new Intent(MessageHistoryActivity.this, MainActivity.class);
                 startActivity(toNewGrpMessage);
                 return true;
+            case R.id.refreshBtn:
+                refreshAllMessages();
+                return true;
             case R.id.DeleteAll_settings:    // new Group Message
                 deleteAllMessages();
                 return true;
@@ -168,7 +186,7 @@ public class MessageHistoryActivity extends AppCompatActivity {
     }   // end menu option selection
 
     /**
-     * This method refreshes the list display
+     * This method refreshes the list display after a pause
      */
     @Override
     public void onResume()
@@ -180,12 +198,20 @@ public class MessageHistoryActivity extends AppCompatActivity {
     }
 
     /**
+     * This method refreshes the app after the back button is hit from another page
+     */
+    @Override
+    public void onRestart(){
+        super.onRestart();
+        checkDatabase();
+    }
+
+    /**
      * This method generates the conversation history of messages on the phone
      * @return ArrayList of Conversation objects
      */
 
     private ArrayList <Conversation> generateConversationHistory(){
-        ArrayList <String> StoredPhoneNumbers = new ArrayList<String>();
         ArrayList <Message> StoredMessages = new ArrayList<Message>();
 
         //pooling text messages from the sms manager
@@ -195,37 +221,39 @@ public class MessageHistoryActivity extends AppCompatActivity {
         Cursor smsInboxCursor = cr.query(inboxURI, requestedColumns, null, null,null);
         int indexBody = smsInboxCursor.getColumnIndex("body");
         int indexAddress = smsInboxCursor.getColumnIndex("address");
-        int indexType = smsInboxCursor.getColumnIndex("type");// 2 = sent, etc.)
+        int indexType = smsInboxCursor.getColumnIndex("type");// 1 = received, 2 = sent, etc.)
         smsInboxCursor.moveToFirst(); // last text sent
 
         // The next few lines are to group messages per phone number
-        if (indexBody < 0 ||  !smsInboxCursor.moveToNext()) return null;
+        if (indexBody < 0 || !smsInboxCursor.moveToNext()) return null;
         smsInboxCursor.moveToFirst();
         do {
-
-            if (!StoredPhoneNumbers.contains(smsInboxCursor.getString(indexAddress))){
-                StoredPhoneNumbers.add(smsInboxCursor.getString(indexAddress)); // add phone number
+            if (!PNdatabase.containsPhoneNumber(smsInboxCursor.getString(indexAddress))){
+                PNdatabase.addPhoneNumber(smsInboxCursor.getString(indexAddress)); // add phone number
             }
-            if (smsInboxCursor.getString(indexType).equals("1")) {
+            if (smsInboxCursor.getString(indexType).equals("1")) {  // received messages
                 StoredMessages.add(new Message(smsInboxCursor.getString(indexAddress),
-                        "Received : " + TextEncryption.decrypt(smsInboxCursor.getString(indexBody))));    // add message
+                        TextEncryption.decrypt(smsInboxCursor.getString(indexBody))));    // add message
             }
-            if (smsInboxCursor.getString(indexType).equals("2")) {
+            if (smsInboxCursor.getString(indexType).equals("2")) {  // sent messages
                 StoredMessages.add(new Message(smsInboxCursor.getString(indexAddress),
-                        "You :" + TextEncryption.decrypt(smsInboxCursor.getString(indexBody))));    // add message
+                        "You: " + TextEncryption.decrypt(smsInboxCursor.getString(indexBody))));    // add message
             }
 
         } while(smsInboxCursor.moveToNext());
 
-        for (String sNumber: StoredPhoneNumbers) {   // group messages per phone number]
+        Cursor PNnumbers = PNdatabase.getAllPhoneNumber();
+        PNnumbers.moveToFirst();
+        int index = PNnumbers.getColumnIndex("phone_numbers");
+        do {   // group messages per phone number]
             ArrayList<String> numMessages = new ArrayList<String>();
             for (Message m : StoredMessages) {
-                if (m.getNumber().equals(sNumber)) {
+                if (m.getNumber().equals("+" + PNnumbers.getString(index))) {
                     numMessages.add(m.getBody());
                 }
             }
-            conversations.add(new Conversation(sNumber, numMessages)); // add new conversation
-        }
+            conversations.add(new Conversation(("+" + PNnumbers.getString(index)), numMessages)); // add new conversation
+        } while (PNnumbers.moveToNext());
         return conversations;
     }
 
@@ -236,7 +264,6 @@ public class MessageHistoryActivity extends AppCompatActivity {
     private void refreshSMSInbox() {
         phoneNumber.clear();
         messages.clear();
-
         for (Conversation c: conversations) {   // this returns the last phone number and conversation
             phoneNumber.add(c.getNumber());
             messages.add(c.findLastMessage());
@@ -253,6 +280,7 @@ public class MessageHistoryActivity extends AppCompatActivity {
         alert.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
+                PNdatabase.deleteAllPhoneNumbers();
                 conversations.clear();
                 onResume();
             }
@@ -277,6 +305,7 @@ public class MessageHistoryActivity extends AppCompatActivity {
         alert.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
+                PNdatabase.deletePhoneNumber(conversations.get(threadID).getNumber().replace("+", ""));
                 conversations.remove(threadID);
                 onResume();
             }
@@ -290,5 +319,142 @@ public class MessageHistoryActivity extends AppCompatActivity {
         alert.create();
         alert.show();
     }
+
+    /**
+     * This method reloads all messages in the messaging inbox back to the app
+     */
+    private void refreshAllMessages(){
+        AlertDialog.Builder alert = new AlertDialog.Builder(MessageHistoryActivity.this);
+        alert.setMessage(" Are you sure you want to reload all message to this App?");
+        alert.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                conversations.clear();
+                conversations = generateConversationHistory();
+                onResume();
+            }
+        });
+        alert.setNegativeButton("No", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+        alert.create();
+        alert.show();
+    }
+
+    /**
+     * This method checks if there was an update to the native SMS app
+     * and asks to load those messages
+     */
+    public void checkDatabase(){
+        if (PNdatabase.isEmpty()){
+            AlertDialog.Builder alert = new AlertDialog.Builder(MessageHistoryActivity.this);
+            alert.setMessage(" Do you want to load all message to this App?");
+            alert.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    conversations.clear();
+                    conversations = generateConversationHistory();
+                    onResume();
+                }
+            });
+            alert.setNegativeButton("No", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.dismiss();
+                }
+            });
+            alert.create();
+            alert.show();
+        } else {
+            conversations.clear();
+            conversations = generatePNBasedHistory();
+            onResume();
+        }
+    }
+
+    /**
+     * This method generates the history view based on phone numbers/conversation that were
+     * not previously deleted
+     * @return conversation
+     */
+    private ArrayList <Conversation> generatePNBasedHistory(){
+        ArrayList <Message> StoredMessages = new ArrayList<Message>();
+        ArrayList <String> StoredNumbers = new ArrayList<String>();
+        //pooling text messages from the sms manager
+        Uri inboxURI = Uri.parse("content://sms");
+        String[] requestedColumns = new String[]{"_id", "address", "body", "type"};
+        ContentResolver cr = getContentResolver();
+        Cursor smsInboxCursor = cr.query(inboxURI, requestedColumns, null, null,null);
+        int indexBody = smsInboxCursor.getColumnIndex("body");
+        int indexAddress = smsInboxCursor.getColumnIndex("address");
+        int indexType = smsInboxCursor.getColumnIndex("type");// 2 = sent, etc.)
+        smsInboxCursor.moveToFirst(); // last text sent
+
+        // The next few lines are to group messages per phone number
+        if (indexBody < 0 || !smsInboxCursor.moveToNext()) return null;
+        smsInboxCursor.moveToFirst();
+        do {
+
+            if (!StoredNumbers.contains(smsInboxCursor.getString(indexAddress))){
+                StoredNumbers.add(smsInboxCursor.getString(indexAddress)); // add phone number
+            }
+            if (smsInboxCursor.getString(indexType).equals("1")) {
+                StoredMessages.add(new Message(smsInboxCursor.getString(indexAddress),
+                        TextEncryption.decrypt(smsInboxCursor.getString(indexBody))));    // add message
+            }
+            if (smsInboxCursor.getString(indexType).equals("2")) {
+                StoredMessages.add(new Message(smsInboxCursor.getString(indexAddress),
+                        "You: " + TextEncryption.decrypt(smsInboxCursor.getString(indexBody))));    // add message
+            }
+
+        } while(smsInboxCursor.moveToNext());
+        //save conversation list based on teh phone numbers in the database
+        for (String numMsg: StoredNumbers){
+            ArrayList<String> numMessages = new ArrayList<String>();
+            if  (PNdatabase.containsPhoneNumber(numMsg.replace("+", ""))) {
+                for (Message m : StoredMessages) {
+                    if (m.getNumber().equals(numMsg)) {
+                        numMessages.add(m.getBody());
+                    }
+                }
+                conversations.add(new Conversation(numMsg, numMessages)); // add new conversation
+            }
+        }
+        updateTable(StoredNumbers);
+        return conversations;
+    }
+
+    /**
+     * This method updates the database numbers with the new numbers in SMS
+     * @param newTable
+     */
+    private void updateTable(ArrayList<String> newTable){
+        Cursor tempCursor = PNdatabase.getAllPhoneNumber();
+        int indexTemp = tempCursor.getColumnIndex("phone_numbers");
+        tempCursor.moveToFirst();
+        do {
+            if (!newTable.contains("+" + tempCursor.getString(indexTemp))){
+                PNdatabase.deletePhoneNumber(tempCursor.getString(indexTemp));
+            }
+        } while(tempCursor.moveToNext());
+    }
+    /*
+    private void displayDatabase(){
+        Cursor PNInboxCursor = PNdatabase.getAllPhoneNumber();
+        int pnIndexAddress = PNInboxCursor.getColumnIndex("phone_numbers");
+
+        if (pnIndexAddress < 0 ||  !PNInboxCursor.moveToNext()) {
+            System.out.println("Table Empty");
+            return;
+        }
+        PNInboxCursor.moveToFirst();
+        do {
+            System.out.println("Content : " + PNInboxCursor.getString(pnIndexAddress));
+        } while (PNInboxCursor.moveToNext());
+    }*/
+
 }   // end class
 
