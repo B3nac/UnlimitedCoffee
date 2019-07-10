@@ -1,14 +1,14 @@
 package com.unlimitedcoffee;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
-import android.media.AudioFocusRequest;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -24,8 +24,6 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
 
 public class MessageHistoryActivity extends AppCompatActivity {
 
@@ -272,10 +270,38 @@ public class MessageHistoryActivity extends AppCompatActivity {
         phoneNumber.clear();
         messages.clear();
         for (Conversation c: conversations) {   // this returns the last phone number and conversation
-            phoneNumber.add(c.getNumber());
+
+            if (getContactDisplayNameByNumber(c.getNumber(), this).length()==0){
+                phoneNumber.add(c.getNumber());
+            } else {
+                phoneNumber.add(getContactDisplayNameByNumber(c.getNumber(), this));
+            }
             messages.add(c.findLastMessage());
             dates.add(c.findLastTimeStamp());
         }
+    }
+
+    public String getContactDisplayNameByNumber(String number, Context context) {
+        Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number));
+        String name = "";
+
+        ContentResolver contentResolver = context.getContentResolver();
+        Cursor contactLookup = contentResolver.query(uri, null, null, null, null);
+
+        try {
+            if (contactLookup != null && contactLookup.getCount() > 0) {
+                contactLookup.moveToNext();
+                name += contactLookup.getString(contactLookup.getColumnIndex(ContactsContract.Data.DISPLAY_NAME));
+            }else{
+                name = "";
+            }
+        } finally {
+            if (contactLookup != null) {
+                contactLookup.close();
+            }
+        }
+
+        return name;
     }
 
     /**

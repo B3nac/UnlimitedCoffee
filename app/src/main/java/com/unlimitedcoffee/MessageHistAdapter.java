@@ -1,19 +1,18 @@
 package com.unlimitedcoffee;
 
+import android.content.ContentResolver;
 import android.content.Context;
-import android.text.format.DateFormat;
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.ContactsContract;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
-
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.TimeZone;
-import java.util.concurrent.TimeUnit;
 
 public class MessageHistAdapter extends BaseAdapter {
 
@@ -71,4 +70,5 @@ public class MessageHistAdapter extends BaseAdapter {
         String today = dateFormat.format(Long.parseLong(time));
         return today;
     }
+
 }
