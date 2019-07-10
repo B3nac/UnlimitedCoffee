@@ -218,7 +218,7 @@ public class MessageHistoryActivity extends AppCompatActivity {
 
         //pooling text messages from the sms manager
         Uri inboxURI = Uri.parse("content://sms");
-        String[] requestedColumns = new String[]{"_id", "address", "body", "type"};
+        String[] requestedColumns = new String[]{"_id", "address", "body", "type", "date"};
         ContentResolver cr = getContentResolver();
         Cursor smsInboxCursor = cr.query(inboxURI, requestedColumns, null, null,null);
         int indexBody = smsInboxCursor.getColumnIndex("body");
@@ -242,7 +242,7 @@ public class MessageHistoryActivity extends AppCompatActivity {
             if (smsInboxCursor.getString(indexType).equals("2")) {  // sent messages
                 StoredMessages.add(new Message(smsInboxCursor.getString(indexAddress),
                         "You: " + TextEncryption.decrypt(smsInboxCursor.getString(indexBody)),
-                        smsInboxCursor.getString(indexDate)));    // add message
+                        smsInboxCursor.getString(indexDate)));    // add time Stamp
             }
 
         } while(smsInboxCursor.moveToNext());
