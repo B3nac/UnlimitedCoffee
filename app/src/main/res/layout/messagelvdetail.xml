@@ -27,8 +27,24 @@
         android:layout_marginStart="20dp"
         android:layout_marginLeft="20dp"
         android:layout_marginTop="6dp"
-        android:layout_marginEnd="24dp"
+        android:layout_marginEnd="13dp"
         android:text="@string/dialog_message"
+        android:textAlignment="viewStart"
+        android:textSize="18sp"
         tools:text="descriptionTextView" />
+
+    <TextView
+        android:id="@+id/dateTextView"
+        android:layout_width="156dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginStart="13dp"
+        android:layout_marginTop="23dp"
+        android:layout_marginEnd="14dp"
+        android:layout_toEndOf="@+id/phoneNumTextView"
+        android:inputType="text"
+        android:text="date"
+        android:textAlignment="textEnd" />
 
 </RelativeLayout>

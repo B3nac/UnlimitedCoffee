@@ -24,6 +24,8 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 
 public class MessageHistoryActivity extends AppCompatActivity {
 
@@ -33,6 +35,7 @@ public class MessageHistoryActivity extends AppCompatActivity {
     MessageHistAdapter msgAdapter;
     ArrayList<String> phoneNumber = new ArrayList<>();
     ArrayList<String> messages = new ArrayList<>();
+    ArrayList<String> dates = new ArrayList<>();
     ArrayList <Conversation> conversations = new ArrayList<Conversation>();
     PNDatabaseHelper PNdatabase;
     WebView mWebView;
@@ -63,7 +66,7 @@ public class MessageHistoryActivity extends AppCompatActivity {
         smsListView = (ListView) findViewById(R.id.lvMsg);
         registerForContextMenu(smsListView);
 
-        msgAdapter = new MessageHistAdapter (this, phoneNumber , messages);
+        msgAdapter = new MessageHistAdapter (this, phoneNumber , messages, dates);
         smsListView.setAdapter(msgAdapter);
 
         PNdatabase = new PNDatabaseHelper(this);
@@ -121,7 +124,6 @@ public class MessageHistoryActivity extends AppCompatActivity {
         final int index = (int) info.id;
         switch(item.getItemId()) {
             case R.id.Open_menu:
-
                 Intent toNewMessage = new Intent(MessageHistoryActivity.this, MainActivity.class);
                 String selectedMsg = conversations.get(index).getNumber();
                 toNewMessage.putExtra("com.unlimitedcoffee.SELECTED_NUMBER", selectedMsg);
@@ -193,7 +195,7 @@ public class MessageHistoryActivity extends AppCompatActivity {
     {  // After a pause OR at startup
         super.onResume();
         refreshSMSInbox();
-        msgAdapter = new MessageHistAdapter (this, phoneNumber , messages);
+        msgAdapter = new MessageHistAdapter (this, phoneNumber , messages, dates);
         smsListView.setAdapter(msgAdapter);
     }
 
@@ -222,6 +224,7 @@ public class MessageHistoryActivity extends AppCompatActivity {
         int indexBody = smsInboxCursor.getColumnIndex("body");
         int indexAddress = smsInboxCursor.getColumnIndex("address");
         int indexType = smsInboxCursor.getColumnIndex("type");// 1 = received, 2 = sent, etc.)
+        int indexDate = smsInboxCursor.getColumnIndex("date");
         smsInboxCursor.moveToFirst(); // last text sent
 
         // The next few lines are to group messages per phone number
@@ -233,11 +236,13 @@ public class MessageHistoryActivity extends AppCompatActivity {
             }
             if (smsInboxCursor.getString(indexType).equals("1")) {  // received messages
                 StoredMessages.add(new Message(smsInboxCursor.getString(indexAddress),
-                        TextEncryption.decrypt(smsInboxCursor.getString(indexBody))));    // add message
+                        TextEncryption.decrypt(smsInboxCursor.getString(indexBody)),
+                        smsInboxCursor.getString(indexDate)));    // add message
             }
             if (smsInboxCursor.getString(indexType).equals("2")) {  // sent messages
                 StoredMessages.add(new Message(smsInboxCursor.getString(indexAddress),
-                        "You: " + TextEncryption.decrypt(smsInboxCursor.getString(indexBody))));    // add message
+                        "You: " + TextEncryption.decrypt(smsInboxCursor.getString(indexBody)),
+                        smsInboxCursor.getString(indexDate)));    // add message
             }
 
         } while(smsInboxCursor.moveToNext());
@@ -247,12 +252,14 @@ public class MessageHistoryActivity extends AppCompatActivity {
         int index = PNnumbers.getColumnIndex("phone_numbers");
         do {   // group messages per phone number]
             ArrayList<String> numMessages = new ArrayList<String>();
+            ArrayList<String> numTimes = new ArrayList<String>();
             for (Message m : StoredMessages) {
                 if (m.getNumber().equals("+" + PNnumbers.getString(index))) {
                     numMessages.add(m.getBody());
+                    numTimes.add(m.getTimeStamp());
                 }
             }
-            conversations.add(new Conversation(("+" + PNnumbers.getString(index)), numMessages)); // add new conversation
+            conversations.add(new Conversation(("+" + PNnumbers.getString(index)), numMessages, numTimes)); // add new conversation
         } while (PNnumbers.moveToNext());
         return conversations;
     }
@@ -267,6 +274,7 @@ public class MessageHistoryActivity extends AppCompatActivity {
         for (Conversation c: conversations) {   // this returns the last phone number and conversation
             phoneNumber.add(c.getNumber());
             messages.add(c.findLastMessage());
+            dates.add(c.findLastTimeStamp());
         }
     }
 
@@ -385,12 +393,13 @@ public class MessageHistoryActivity extends AppCompatActivity {
         ArrayList <String> StoredNumbers = new ArrayList<String>();
         //pooling text messages from the sms manager
         Uri inboxURI = Uri.parse("content://sms");
-        String[] requestedColumns = new String[]{"_id", "address", "body", "type"};
+        String[] requestedColumns = new String[]{"_id", "address", "body", "type", "date"};
         ContentResolver cr = getContentResolver();
         Cursor smsInboxCursor = cr.query(inboxURI, requestedColumns, null, null,null);
         int indexBody = smsInboxCursor.getColumnIndex("body");
         int indexAddress = smsInboxCursor.getColumnIndex("address");
         int indexType = smsInboxCursor.getColumnIndex("type");// 2 = sent, etc.)
+        int indexDate = smsInboxCursor.getColumnIndex("date");
         smsInboxCursor.moveToFirst(); // last text sent
 
         // The next few lines are to group messages per phone number
@@ -403,24 +412,28 @@ public class MessageHistoryActivity extends AppCompatActivity {
             }
             if (smsInboxCursor.getString(indexType).equals("1")) {
                 StoredMessages.add(new Message(smsInboxCursor.getString(indexAddress),
-                        TextEncryption.decrypt(smsInboxCursor.getString(indexBody))));    // add message
+                        TextEncryption.decrypt(smsInboxCursor.getString(indexBody)),
+                        smsInboxCursor.getString(indexDate)));    // add message
             }
             if (smsInboxCursor.getString(indexType).equals("2")) {
                 StoredMessages.add(new Message(smsInboxCursor.getString(indexAddress),
-                        "You: " + TextEncryption.decrypt(smsInboxCursor.getString(indexBody))));    // add message
+                        "You: " + TextEncryption.decrypt(smsInboxCursor.getString(indexBody)),
+                        smsInboxCursor.getString(indexDate)));    // add message
             }
 
         } while(smsInboxCursor.moveToNext());
         //save conversation list based on teh phone numbers in the database
         for (String numMsg: StoredNumbers){
             ArrayList<String> numMessages = new ArrayList<String>();
+            ArrayList<String> numTimes = new ArrayList<String>();
             if  (PNdatabase.containsPhoneNumber(numMsg.replace("+", ""))) {
                 for (Message m : StoredMessages) {
                     if (m.getNumber().equals(numMsg)) {
                         numMessages.add(m.getBody());
+                        numTimes.add(m.getTimeStamp());
                     }
                 }
-                conversations.add(new Conversation(numMsg, numMessages)); // add new conversation
+                conversations.add(new Conversation(numMsg, numMessages, numTimes)); // add new conversation
             }
         }
         updateTable(StoredNumbers);
@@ -441,6 +454,8 @@ public class MessageHistoryActivity extends AppCompatActivity {
             }
         } while(tempCursor.moveToNext());
     }
+
+
     /*
     private void displayDatabase(){
         Cursor PNInboxCursor = PNdatabase.getAllPhoneNumber();
