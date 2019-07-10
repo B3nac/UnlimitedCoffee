@@ -1,15 +1,18 @@
 package com.unlimitedcoffee;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.ContextMenu;
@@ -17,8 +20,6 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.Toast;
@@ -29,14 +30,15 @@ public class MessageHistoryActivity extends AppCompatActivity {
 
     SessionPreferences session;
     FloatingActionButton newMsgBtn;
-    ListView smsListView;
-    MessageHistAdapter msgAdapter;
-    ArrayList<String> phoneNumber = new ArrayList<>();
-    ArrayList<String> messages = new ArrayList<>();
-    ArrayList<String> dates = new ArrayList<>();
-    ArrayList <Conversation> conversations = new ArrayList<Conversation>();
+    private ListView smsListView;
+    private MessageHistAdapter msgAdapter;
+    private ArrayList<String> phoneNumber = new ArrayList<>();
+    private ArrayList<String> messages = new ArrayList<>();
+    private ArrayList<String> dates = new ArrayList<>();
+    private ArrayList<String> readStat = new ArrayList<>();
+    private ArrayList <Conversation> conversations = new ArrayList<Conversation>();
     PNDatabaseHelper PNdatabase;
-    WebView mWebView;
+    private static final int REQUEST_PERMISSION = 1;
     /**
      * One create method for the message History activity
      * @param savedInstanceState
@@ -50,21 +52,11 @@ public class MessageHistoryActivity extends AppCompatActivity {
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_message_history);
-        mWebView = new WebView(this);
-        mWebView.getSettings().setJavaScriptEnabled(true);
-        mWebView.setWebViewClient(new WebViewClient(){
-
-            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                Toast.makeText(MessageHistoryActivity.this , "refresh clicked " , Toast.LENGTH_SHORT).show();
-            }
-
-        });
-
 
         smsListView = (ListView) findViewById(R.id.lvMsg);
         registerForContextMenu(smsListView);
 
-        msgAdapter = new MessageHistAdapter (this, phoneNumber , messages, dates);
+        msgAdapter = new MessageHistAdapter (this, phoneNumber , messages, dates, readStat);
         smsListView.setAdapter(msgAdapter);
 
         PNdatabase = new PNDatabaseHelper(this);
@@ -192,9 +184,10 @@ public class MessageHistoryActivity extends AppCompatActivity {
     public void onResume()
     {  // After a pause OR at startup
         super.onResume();
-        refreshSMSInbox();
-        msgAdapter = new MessageHistAdapter (this, phoneNumber , messages, dates);
+        msgAdapter = new MessageHistAdapter (this, phoneNumber , messages, dates, readStat);
         smsListView.setAdapter(msgAdapter);
+        refreshSMSInbox();
+
     }
 
     /**
@@ -204,6 +197,7 @@ public class MessageHistoryActivity extends AppCompatActivity {
     public void onRestart(){
         super.onRestart();
         checkDatabase();
+        refreshSMSInbox();
     }
 
     /**
@@ -216,13 +210,14 @@ public class MessageHistoryActivity extends AppCompatActivity {
 
         //pooling text messages from the sms manager
         Uri inboxURI = Uri.parse("content://sms");
-        String[] requestedColumns = new String[]{"_id", "address", "body", "type", "date"};
+        String[] requestedColumns = new String[]{"_id", "address", "body", "type", "date", "read"};
         ContentResolver cr = getContentResolver();
         Cursor smsInboxCursor = cr.query(inboxURI, requestedColumns, null, null,null);
         int indexBody = smsInboxCursor.getColumnIndex("body");
         int indexAddress = smsInboxCursor.getColumnIndex("address");
         int indexType = smsInboxCursor.getColumnIndex("type");// 1 = received, 2 = sent, etc.)
         int indexDate = smsInboxCursor.getColumnIndex("date");
+        int indexRead = smsInboxCursor.getColumnIndex("read");
         smsInboxCursor.moveToFirst(); // last text sent
 
         // The next few lines are to group messages per phone number
@@ -235,12 +230,14 @@ public class MessageHistoryActivity extends AppCompatActivity {
             if (smsInboxCursor.getString(indexType).equals("1")) {  // received messages
                 StoredMessages.add(new Message(smsInboxCursor.getString(indexAddress),
                         TextEncryption.decrypt(smsInboxCursor.getString(indexBody)),
-                        smsInboxCursor.getString(indexDate)));    // add message
+                        smsInboxCursor.getString(indexDate),
+                        smsInboxCursor.getString(indexRead)));    // add time Stamp
             }
             if (smsInboxCursor.getString(indexType).equals("2")) {  // sent messages
                 StoredMessages.add(new Message(smsInboxCursor.getString(indexAddress),
                         "You: " + TextEncryption.decrypt(smsInboxCursor.getString(indexBody)),
-                        smsInboxCursor.getString(indexDate)));    // add time Stamp
+                        smsInboxCursor.getString(indexDate),
+                        smsInboxCursor.getString(indexRead)));    // add time Stamp
             }
 
         } while(smsInboxCursor.moveToNext());
@@ -251,13 +248,16 @@ public class MessageHistoryActivity extends AppCompatActivity {
         do {   // group messages per phone number]
             ArrayList<String> numMessages = new ArrayList<String>();
             ArrayList<String> numTimes = new ArrayList<String>();
+            ArrayList<String> numRdStat = new ArrayList<>();
             for (Message m : StoredMessages) {
                 if (m.getNumber().equals("+" + PNnumbers.getString(index))) {
                     numMessages.add(m.getBody());
                     numTimes.add(m.getTimeStamp());
+                    numRdStat.add(m.getReadStat());
                 }
             }
-            conversations.add(new Conversation(("+" + PNnumbers.getString(index)), numMessages, numTimes)); // add new conversation
+            conversations.add(new Conversation(("+" + PNnumbers.getString(index)), numMessages,
+                    numTimes, numRdStat)); // add new conversation
         } while (PNnumbers.moveToNext());
         return conversations;
     }
@@ -269,40 +269,15 @@ public class MessageHistoryActivity extends AppCompatActivity {
     private void refreshSMSInbox() {
         phoneNumber.clear();
         messages.clear();
+        readStat.clear();
         for (Conversation c: conversations) {   // this returns the last phone number and conversation
-
-            if (getContactDisplayNameByNumber(c.getNumber(), this).length()==0){
-                phoneNumber.add(c.getNumber());
-            } else {
-                phoneNumber.add(getContactDisplayNameByNumber(c.getNumber(), this));
-            }
+            readStat.add(c.findLastReadStat());
             messages.add(c.findLastMessage());
             dates.add(c.findLastTimeStamp());
+            phoneNumber.add(phoneNumberAlias(c.getNumber()));
         }
     }
 
-    public String getContactDisplayNameByNumber(String number, Context context) {
-        Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number));
-        String name = "";
-
-        ContentResolver contentResolver = context.getContentResolver();
-        Cursor contactLookup = contentResolver.query(uri, null, null, null, null);
-
-        try {
-            if (contactLookup != null && contactLookup.getCount() > 0) {
-                contactLookup.moveToNext();
-                name += contactLookup.getString(contactLookup.getColumnIndex(ContactsContract.Data.DISPLAY_NAME));
-            }else{
-                name = "";
-            }
-        } finally {
-            if (contactLookup != null) {
-                contactLookup.close();
-            }
-        }
-
-        return name;
-    }
 
     /**
      * This method deletes all message threads in the conversation history
@@ -419,13 +394,14 @@ public class MessageHistoryActivity extends AppCompatActivity {
         ArrayList <String> StoredNumbers = new ArrayList<String>();
         //pooling text messages from the sms manager
         Uri inboxURI = Uri.parse("content://sms");
-        String[] requestedColumns = new String[]{"_id", "address", "body", "type", "date"};
+        String[] requestedColumns = new String[]{"_id", "address", "body", "type", "date", "read"};
         ContentResolver cr = getContentResolver();
         Cursor smsInboxCursor = cr.query(inboxURI, requestedColumns, null, null,null);
         int indexBody = smsInboxCursor.getColumnIndex("body");
         int indexAddress = smsInboxCursor.getColumnIndex("address");
         int indexType = smsInboxCursor.getColumnIndex("type");// 2 = sent, etc.)
         int indexDate = smsInboxCursor.getColumnIndex("date");
+        int indexRead = smsInboxCursor.getColumnIndex("read");
         smsInboxCursor.moveToFirst(); // last text sent
 
         // The next few lines are to group messages per phone number
@@ -439,12 +415,14 @@ public class MessageHistoryActivity extends AppCompatActivity {
             if (smsInboxCursor.getString(indexType).equals("1")) {
                 StoredMessages.add(new Message(smsInboxCursor.getString(indexAddress),
                         TextEncryption.decrypt(smsInboxCursor.getString(indexBody)),
-                        smsInboxCursor.getString(indexDate)));    // add message
+                        smsInboxCursor.getString(indexDate),
+                        smsInboxCursor.getString(indexRead)));    //add time Stamp
             }
             if (smsInboxCursor.getString(indexType).equals("2")) {
                 StoredMessages.add(new Message(smsInboxCursor.getString(indexAddress),
                         "You: " + TextEncryption.decrypt(smsInboxCursor.getString(indexBody)),
-                        smsInboxCursor.getString(indexDate)));    // add message
+                        smsInboxCursor.getString(indexDate),
+                        smsInboxCursor.getString(indexRead)));    // add time Stamp
             }
 
         } while(smsInboxCursor.moveToNext());
@@ -452,14 +430,18 @@ public class MessageHistoryActivity extends AppCompatActivity {
         for (String numMsg: StoredNumbers){
             ArrayList<String> numMessages = new ArrayList<String>();
             ArrayList<String> numTimes = new ArrayList<String>();
+            ArrayList<String> numRdStat = new ArrayList<>();
             if  (PNdatabase.containsPhoneNumber(numMsg.replace("+", ""))) {
                 for (Message m : StoredMessages) {
                     if (m.getNumber().equals(numMsg)) {
                         numMessages.add(m.getBody());
                         numTimes.add(m.getTimeStamp());
+                        numRdStat.add(m.getReadStat());
                     }
                 }
-                conversations.add(new Conversation(numMsg, numMessages, numTimes)); // add new conversation
+                conversations.add(new Conversation(numMsg, numMessages,
+                        numTimes, numRdStat)); // add new conversation
+
             }
         }
         updateTable(StoredNumbers);
@@ -479,6 +461,49 @@ public class MessageHistoryActivity extends AppCompatActivity {
                 PNdatabase.deletePhoneNumber(tempCursor.getString(indexTemp));
             }
         } while(tempCursor.moveToNext());
+    }
+
+    /**
+     *This method looksup the phone number and translates it to the contact name
+     * @param number
+     * @param context
+     * @return
+     */
+
+    public String getContactDisplayNameByNumber(String number, Context context) {
+        Uri uri = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number));
+        String name = "";
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.READ_CONTACTS,
+                            Manifest.permission.WRITE_CONTACTS}, REQUEST_PERMISSION);
+
+        }
+        ContentResolver contentResolver = context.getContentResolver();
+        Cursor contactLookup = contentResolver.query(uri, null, null, null, null);
+
+        try {
+            if (contactLookup != null && contactLookup.getCount() > 0) {
+                contactLookup.moveToNext();
+                name += contactLookup.getString(contactLookup.getColumnIndex(ContactsContract.Data.DISPLAY_NAME));
+            }
+        } finally {
+            if (contactLookup != null) {
+                contactLookup.close();
+            }
+        }
+        contactLookup.close();
+
+        return name;
+    }
+
+    public String phoneNumberAlias(String phoneNumber){
+        if (getContactDisplayNameByNumber(phoneNumber, this).length() == 0){
+            return phoneNumber;
+        } else {
+            return getContactDisplayNameByNumber(phoneNumber, this);
+        }
     }
 
 

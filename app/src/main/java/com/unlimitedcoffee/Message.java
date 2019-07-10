@@ -4,11 +4,13 @@ public class Message {
     String number;
     String body;
     String timeStamp;
+    String readStat;
 
-    public Message(String number, String body, String timeStamp) {
+    public Message(String number, String body, String timeStamp, String readStat) {
         this.number = number;
         this.body = body;
         this.timeStamp = timeStamp;
+        this.readStat = readStat;
     }
 
     public String getNumber() {
@@ -25,6 +27,14 @@ public class Message {
 
     public String getTimeStamp() {
         return timeStamp;
+    }
+
+    public String getReadStat() {
+        return readStat;
+    }
+
+    public void setReadStat(String readStat) {
+        this.readStat = readStat;
     }
 
     public void setTimeStamp(String timeStamp) {
