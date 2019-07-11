@@ -30,6 +30,7 @@ public class MessageHistoryActivity extends AppCompatActivity {
 
     SessionPreferences session;
     FloatingActionButton newMsgBtn;
+<<<<<<< HEAD
     private ListView smsListView;
     private MessageHistAdapter msgAdapter;
     private ArrayList<String> phoneNumber = new ArrayList<>();
@@ -39,6 +40,19 @@ public class MessageHistoryActivity extends AppCompatActivity {
     private ArrayList <Conversation> conversations = new ArrayList<Conversation>();
     PNDatabaseHelper PNdatabase;
     private static final int REQUEST_PERMISSION = 1;
+=======
+    ListView smsListView;
+    MessageHistAdapter msgAdapter;
+    ArrayList<String> phoneNumber = new ArrayList<>();
+    ArrayList<String> messages = new ArrayList<>();
+    ArrayList <Conversation> conversations = new ArrayList<Conversation>();
+
+    @Override // prevents navigation back to Login or Registration pages
+    public void onBackPressed() {
+        moveTaskToBack(true);
+    }
+
+>>>>>>> a7a42df4403bb51ff86f28a56b7a878707ba5dd4
     /**
      * One create method for the message History activity
      * @param savedInstanceState
