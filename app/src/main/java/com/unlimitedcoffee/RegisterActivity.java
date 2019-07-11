@@ -25,11 +25,6 @@ public class RegisterActivity extends AppCompatActivity {
     Button mRegisterButton;
     DatabaseHelper db;
 
-    @Override // prevent backpress from launching main smsapp activity
-    public void onBackPressed() {
-        moveTaskToBack(true);
-    }
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
@@ -55,20 +50,35 @@ public class RegisterActivity extends AppCompatActivity {
                 String password = Utilities.sanitize(mTextPassword.getText().toString());
                 String cf_password = Utilities.sanitize(mTextCfPassword.getText().toString());
 
+                // clear user entry fields
+                mTextPhoneNumber.getText().clear();
+                mTextPassword.getText().clear();
+                mTextCfPassword.getText().clear();
+
                 //Validating phone number
                 if(isValidMobile(phoneNumber)) {
                     //Checks if phone number is already registered
                     if(!db.checkPhone(phoneNumber)) {
-                        //Validating password confirmation
+                        // validate password format, both entries match
                         if (password.equals(cf_password) && isValidPassword(password)) {
                             session.createLoginSession(phoneNumber);
+
                             // hash user password
                             String pwordHash = Utilities.hashPword(password);
+                            // add new user to db
                             db.addUser(phoneNumber, pwordHash);
+
+                            // log user event to db: successful login
+                            String event = "successful login";
+                            String time = Utilities.getTimeStr(); // gets current time as string
+                            db.logEvent(phoneNumber, time, event);
+                            Toast.makeText(RegisterActivity.this, "Registration successful - Welcome!", Toast.LENGTH_SHORT).show();
+
+                            // redirect to Message History screen
                             Intent smsApp = new Intent(RegisterActivity.this, MessageHistoryActivity.class);
                             startActivity(smsApp);
                         } else {
-                            Toast.makeText(RegisterActivity.this, "Passwords don't match or doesn't meet requirements!", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(RegisterActivity.this, "Passwords don't match or don't meet requirements!", Toast.LENGTH_SHORT).show();
                         }
                     }else{
                         Toast.makeText(RegisterActivity.this, "Phone number already registered.", Toast.LENGTH_SHORT).show();
